@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tic Tac Toe - Single Player</title>
+    <style>
+        /* General Styles */
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Helvetica Neue', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        /* Game Board Styling */
+        #game {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            grid-template-rows: repeat(3, 120px);
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            background-color: #fff;
+            border: 2px solid #444;
+            font-size: 80px;
+            text-align: center;
+            line-height: 120px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .cell:hover {
+            background-color: #e0e0e0;
+        }
+
+        .cell.disabled {
+            cursor: default;
+        }
+
+        /* Scoreboard Styling */
+        #scoreboard {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+            color: #333;
+        }
+
+        #scoreboard div {
+            margin: 0 15px;
+        }
+
+        /* Reset Button Styling */
+        #reset {
+            padding: 10px 30px;
+            font-size: 18px;
+            background-color: #2196F3;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #reset:hover {
+            background-color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Tic Tac Toe - Single Player</h1>
+
+    <div id="scoreboard">
+        <div id="human-score">You: 0</div>
+        <div id="computer-score">Computer: 0</div>
+        <div id="draw-score">Draws: 0</div>
+    </div>
+
+    <div id="game">
+        <!-- Game board will be generated here -->
+    </div>
+
+    <button id="reset">Reset Game</button>
+
+    <script>
+        // Select DOM elements
+        const game = document.getElementById('game');
+        const resetButton = document.getElementById('reset');
+        const humanScoreElement = document.getElementById('human-score');
+        const computerScoreElement = document.getElementById('computer-score');
+        const drawScoreElement = document.getElementById('draw-score');
+
+        // Game variables
+        let humanPlayer = 'X';
+        let computerPlayer = 'O';
+        let currentPlayer;
+        let gameState = ['', '', '', '', '', '', '', '', ''];
+        let gameActive = true;
+        let startingPlayer = 'human'; // Alternates between 'human' and 'computer'
+
+        // Score variables
+        let humanScore = 0;
+        let computerScore = 0;
+        let drawScore = 0;
+
+        // Winning combinations
+        const winningConditions = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7 ,8],
+            [0, 3, 6],
+            [1, 4 ,7],
+            [2, 5, 8],
+            [0, 4 ,8],
+            [2, 4, 6]
+        ];
+
+        // Handle cell clicks
+        function handleCellClick(e) {
+            const clickedCell = e.target;
+            const clickedCellIndex = parseInt(clickedCell.getAttribute('data-cell-index'));
+
+            // Ignore click if cell is already filled or game is over
+            if (gameState[clickedCellIndex] !== '' || !gameActive) {
+                return;
+            }
+
+            // Human makes a move
+            makeMove(clickedCellIndex, humanPlayer);
+
+            // Check for a win or draw
+            if (!checkResult(humanPlayer)) {
+                // Computer makes a move
+                setTimeout(computerTurn, 500); // Delay for better UX
+            }
+        }
+
+        // Make a move
+        function makeMove(index, player) {
+            gameState[index] = player;
+            const cell = document.querySelector(`.cell[data-cell-index='${index}']`);
+            cell.textContent = player;
+            cell.classList.add('disabled');
+        }
+
+        // Computer's turn using Minimax algorithm
+        function computerTurn() {
+            if (!gameActive) return;
+
+            const bestMove = minimax(gameState, computerPlayer).index;
+            makeMove(bestMove, computerPlayer);
+
+            // Check for a win or draw
+            checkResult(computerPlayer);
+        }
+
+        // Minimax Algorithm
+        function minimax(newGameState, player) {
+            // Available spots
+            const availSpots = newGameState.reduce((acc, val, idx) => {
+                if (val === '') acc.push(idx);
+                return acc;
+            }, []);
+
+            // Check for terminal states
+            if (winning(newGameState, humanPlayer)) {
+                return { score: -10 };
+            } else if (winning(newGameState, computerPlayer)) {
+                return { score: 10 };
+            } else if (availSpots.length === 0) {
+                return { score: 0 };
+            }
+
+            // Collect scores from possible moves
+            let moves = [];
+
+            for (let i = 0; i < availSpots.length; i++) {
+                let move = {};
+                move.index = availSpots[i];
+                newGameState[availSpots[i]] = player;
+
+                if (player === computerPlayer) {
+                    let result = minimax(newGameState, humanPlayer);
+                    move.score = result.score;
+                } else {
+                    let result = minimax(newGameState, computerPlayer);
+                    move.score = result.score;
+                }
+
+                newGameState[availSpots[i]] = '';
+                moves.push(move);
+            }
+
+            // Choose the best move
+            let bestMove;
+            if (player === computerPlayer) {
+                let bestScore = -Infinity;
+                for (let i = 0; i < moves.length; i++) {
+                    if (moves[i].score > bestScore) {
+                        bestScore = moves[i].score;
+                        bestMove = i;
+                    }
+                }
+            } else {
+                let bestScore = Infinity;
+                for (let i = 0; i < moves.length; i++) {
+                    if (moves[i].score < bestScore) {
+                        bestScore = moves[i].score;
+                        bestMove = i;
+                    }
+                }
+            }
+
+            return moves[bestMove];
+        }
+
+        // Check if a player has won
+        function winning(board, player) {
+            return winningConditions.some(condition => {
+                return condition.every(index => board[index] === player);
+            });
+        }
+
+        // Check game result
+        function checkResult(player) {
+            if (winning(gameState, player)) {
+                gameActive = false;
+                if (player === humanPlayer) {
+                    alert('You win!');
+                    humanScore++;
+                    updateScoreboard();
+                } else {
+                    alert('Computer wins!');
+                    computerScore++;
+                    updateScoreboard();
+                }
+                return true;
+            }
+
+            // Check for a draw
+            if (!gameState.includes('')) {
+                alert('Game ended in a draw!');
+                gameActive = false;
+                drawScore++;
+                updateScoreboard();
+                return true;
+            }
+
+            return false;
+        }
+
+        // Update the scoreboard
+        function updateScoreboard() {
+            humanScoreElement.textContent = `You: ${humanScore}`;
+            computerScoreElement.textContent = `Computer: ${computerScore}`;
+            drawScoreElement.textContent = `Draws: ${drawScore}`;
+        }
+
+        // Reset the game
+        function resetGame() {
+            gameState = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('disabled');
+            });
+
+            // Alternate starting player
+            startingPlayer = startingPlayer === 'human' ? 'computer' : 'human';
+
+            if (startingPlayer === 'computer') {
+                setTimeout(computerTurn, 500); // Delay for better UX
+            }
+        }
+
+        // Create the game board
+        function createBoard() {
+            game.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.setAttribute('class', 'cell');
+                cell.setAttribute('data-cell-index', i);
+                cell.addEventListener('click', handleCellClick);
+                game.appendChild(cell);
+            }
+        }
+
+        // Event listeners
+        resetButton.addEventListener('click', resetGame);
+
+        // Initialize the game
+        createBoard();
+        if (startingPlayer === 'computer') {
+            setTimeout(computerTurn, 500);
+        }
+    </script>
+
+</body>
+</html>
